@@ -16,20 +16,23 @@ A modern web application that helps users understand how companies generate reve
 ## Tech Stack
 
 - **Frontend**: Next.js 14, TypeScript, Tailwind CSS
-- **Database**: PostgreSQL
+- **Database**: PostgreSQL (Cloudflare D1)
 - **Authentication**: NextAuth.js
 - **Styling**: Tailwind CSS, shadcn/ui components
-- **Deployment**: Vercel
+- **Deployment**: Cloudflare Pages
+- **Storage**: Cloudflare R2 (for static assets)
+- **Edge Functions**: Cloudflare Workers
 
 ## Getting Started
 
 ### Prerequisites
 
 - Node.js 18+ 
-- PostgreSQL
 - pnpm
+- Cloudflare account
+- Domain name (optional)
 
-### Installation
+### Local Development
 
 1. Clone the repository:
    ```bash
@@ -50,15 +53,45 @@ A modern web application that helps users understand how companies generate reve
    NEXTAUTH_URL=http://localhost:3000
    ```
 
-4. Run database migrations:
-   ```bash
-   pnpm prisma migrate dev
-   ```
-
-5. Start the development server:
+4. Start the development server:
    ```bash
    pnpm dev
    ```
+
+### Cloudflare Deployment
+
+1. Install Wrangler CLI:
+   ```bash
+   pnpm add -g wrangler
+   ```
+
+2. Login to Cloudflare:
+   ```bash
+   wrangler login
+   ```
+
+3. Create a new D1 database:
+   ```bash
+   wrangler d1 create howdotheymakemoney-db
+   ```
+
+4. Deploy to Cloudflare Pages:
+   ```bash
+   wrangler pages deploy frontend
+   ```
+
+5. Set up environment variables in Cloudflare Dashboard:
+   - Go to your project settings
+   - Add the following environment variables:
+     - `DATABASE_URL`
+     - `NEXTAUTH_SECRET`
+     - `NEXTAUTH_URL` (your production URL)
+
+6. Configure custom domain (optional):
+   - In Cloudflare Pages dashboard
+   - Go to your project settings
+   - Under "Custom domains", add your domain
+   - Follow the DNS configuration instructions
 
 ## Project Structure
 
@@ -90,4 +123,6 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - [Next.js](https://nextjs.org/)
 - [Tailwind CSS](https://tailwindcss.com/)
 - [shadcn/ui](https://ui.shadcn.com/)
-- [Prisma](https://www.prisma.io/) 
+- [Cloudflare](https://www.cloudflare.com/)
+- [Cloudflare Pages](https://pages.cloudflare.com/)
+- [Cloudflare D1](https://developers.cloudflare.com/d1/) 
