@@ -34,13 +34,14 @@ export default function SignupPage() {
 
       const data = await response.json();
 
-      if (data.success) {
-        router.push('/');
+      if (response.ok && data.success) {
+        window.location.href = '/';
       } else {
-        setError(data.message || 'Signup failed. Please try again.');
+        setError(data.error || `Signup failed with status: ${response.status}`);
       }
     } catch (error) {
-      setError('An error occurred. Please try again.');
+      console.error('Signup fetch/processing error:', error);
+      setError('An error occurred while processing the signup response. Please try again.');
     } finally {
       setIsLoading(false);
     }

@@ -1,43 +1,47 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/db';
-import { users } from '@/lib/schema';
-import { eq } from 'drizzle-orm';
-import { verify } from 'jsonwebtoken';
 import { cookies } from 'next/headers';
+import { jwtVerify } from 'jose';
+import { UserSession } from '@/lib/auth'; // Import the session type
 
-export async function GET() {
+// Secret key (should match middleware/auth.ts/signup)
+const JWT_SECRET = new TextEncoder().encode(
+  process.env.JWT_SECRET || 'your-secret-key' // Ensure this matches!
+);
+
+export async function GET(request: Request) {
+  const token = cookies().get('token')?.value;
+
+  if (!token) {
+    return NextResponse.json({ success: false, error: 'No token provided' }, { status: 401 });
+  }
+
   try {
-    const token = cookies().get('token')?.value;
-
-    if (!token) {
-      return NextResponse.json({ success: false, user: null });
-    }
-
     // Verify token
-    const decoded = verify(token, process.env.JWT_SECRET || 'your-secret-key') as {
-      userId: number;
-      email: string;
-    };
-
-    // Get user from database
-    const user = await db.query.users.findFirst({
-      where: eq(users.id, decoded.userId),
-    });
-
-    if (!user) {
-      return NextResponse.json({ success: false, user: null });
+    const { payload } = await jwtVerify(token, JWT_SECRET);
+    
+    // Validate payload structure before casting
+    if (
+        typeof payload.id !== 'number' || 
+        typeof payload.email !== 'string' || 
+        typeof payload.name !== 'string' || // Assuming name is now required
+        typeof payload.isAdmin !== 'boolean'
+    ) {
+        console.error('Auth /me error: Invalid JWT payload structure:', payload);
+        throw new Error('Invalid token payload structure');
     }
+    
+    // Token is valid, return user payload matching UserSession
+    return NextResponse.json({ success: true, user: payload as UserSession });
 
-    return NextResponse.json({
-      success: true,
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-      },
-    });
   } catch (error) {
-    console.error('Auth check error:', error);
-    return NextResponse.json({ success: false, user: null });
+    console.error('Auth /me error:', error);
+    // Token is invalid or expired
+    // Clear the invalid cookie? Optional, but can prevent repeated failed checks.
+    const response = NextResponse.json({ success: false, error: 'Invalid or expired token' }, { status: 401 });
+    response.cookies.set({
+        name: 'token', value: '', httpOnly: true, path: '/',
+        secure: process.env.NODE_ENV === 'production', maxAge: 0, sameSite: 'strict',
+    });
+    return response;
   }
 } 

@@ -14,12 +14,24 @@ export const users = sqliteTable('users', {
 // User profiles table schema
 export const userProfiles = sqliteTable('user_profiles', {
   userId: integer('user_id').primaryKey().references(() => users.id, { onDelete: 'cascade' }),
-  displayName: text('display_name'),
+  displayName: text('display_name').notNull(),
   bio: text('bio'),
   avatarUrl: text('avatar_url'),
   notificationPreferences: text('notification_preferences').default('{"email_new_companies":true,"email_site_updates":true}'),
   createdAt: text('created_at').notNull().default('CURRENT_TIMESTAMP'),
   updatedAt: text('updated_at').notNull().default('CURRENT_TIMESTAMP')
+});
+
+// Companies table schema
+export const companies = sqliteTable('companies', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  name: text('name').notNull(),
+  description: text('description'),
+  logo: text('logo'),
+  primaryRevenue: text('primary_revenue').notNull(),
+  revenueBreakdown: text('revenue_breakdown').notNull(),
+  businessModel: text('business_model').notNull(),
+  createdAt: text('created_at').notNull().default('CURRENT_TIMESTAMP')
 });
 
 // Bookmarks table schema
@@ -71,10 +83,8 @@ export const votes = sqliteTable('votes', {
 
 // Counters table schema
 export const counters = sqliteTable('counters', {
-  id: integer('id').primaryKey({ autoIncrement: true }),
-  name: text('name').notNull().unique(),
-  value: integer('value').notNull().default(0),
-  createdAt: text('created_at').notNull().default('CURRENT_TIMESTAMP')
+  name: text('name').primaryKey(),
+  value: integer('value').notNull().default(0)
 });
 
 // Access logs table schema

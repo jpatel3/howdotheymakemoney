@@ -1,64 +1,124 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/db';
 import { users } from '@/lib/schema';
 import { eq } from 'drizzle-orm';
-import { sign } from 'jsonwebtoken';
+import { hash } from 'bcryptjs';
+import { getDB } from '@/lib/db';
+import { SignJWT } from 'jose';
 import { cookies } from 'next/headers';
+
+// Secret key (should match middleware/auth.ts)
+const JWT_SECRET = new TextEncoder().encode(
+  process.env.JWT_SECRET || 'your-secret-key' // Ensure this matches!
+);
+
+// Remove edge runtime since we're using SQLite locally
+// export const runtime = 'edge';
 
 export async function POST(request: Request) {
   try {
-    const { name, email, password } = await request.json();
+    const body = await request.json();
+    const { name, email, password } = body;
 
-    // Check if user already exists
-    const existingUser = await db.query.users.findFirst({
-      where: eq(users.email, email),
-    });
-
-    if (existingUser) {
+    // Validate required fields
+    if (!name || !email || !password) {
       return NextResponse.json(
-        { success: false, message: 'Email already in use' },
+        { error: 'Name, email, and password are required' },
         { status: 400 }
       );
     }
 
-    // In a real application, you would hash the password before storing it
-    // For this example, we'll store it as plain text (not recommended for production)
-    const [user] = await db
-      .insert(users)
-      .values({
-        name,
-        email,
-        password,
-      })
-      .returning();
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return NextResponse.json(
+        { error: 'Invalid email format' },
+        { status: 400 }
+      );
+    }
 
-    // Create JWT token
-    const token = sign(
-      { userId: user.id, email: user.email },
-      process.env.JWT_SECRET || 'your-secret-key',
-      { expiresIn: '7d' }
+    // Validate password strength
+    if (password.length < 8) {
+      return NextResponse.json(
+        { error: 'Password must be at least 8 characters long' },
+        { status: 400 }
+      );
+    }
+
+    // Get the database instance (now requires await)
+    const db = await getDB();
+
+    // Check if user already exists
+    const existingUser = await db
+      .select()
+      .from(users)
+      .where(eq(users.email, email.toLowerCase()))
+      .limit(1)
+      .get();
+
+    if (existingUser) {
+      return NextResponse.json(
+        { error: 'User with this email already exists' },
+        { status: 409 }
+      );
+    }
+
+    // Hash password
+    const hashedPassword = await hash(password, 10);
+
+    // Create new user with isAdmin: false
+    const newUserResult = await db.insert(users).values({
+      name,
+      email: email.toLowerCase(),
+      password: hashedPassword,
+      isAdmin: false, // Default to non-admin
+    }).returning();
+
+    if (!newUserResult || newUserResult.length === 0) {
+      console.error('Signup error: Failed to create user in DB');
+      return NextResponse.json(
+        { error: 'Failed to create user account.' },
+        { status: 500 }
+      );
+    }
+
+    const newUser = newUserResult[0];
+
+    // Create Session Payload including isAdmin
+    const session = {
+      id: newUser.id,
+      email: newUser.email,
+      name: newUser.name, 
+      isAdmin: newUser.isAdmin // Include isAdmin flag
+    };
+
+    const token = await new SignJWT(session)
+      .setProtectedHeader({ alg: 'HS256' })
+      .setIssuedAt()
+      .setExpirationTime('7d')
+      .sign(JWT_SECRET);
+
+    // --- Set Cookie --- 
+    const response = NextResponse.json(
+      { success: true, message: 'User created successfully' }, 
+      { status: 201 }
     );
 
-    // Set cookie
-    cookies().set('token', token, {
+    response.cookies.set({
+      name: 'token',
+      value: token,
       httpOnly: true,
+      path: '/',
       secure: process.env.NODE_ENV === 'production',
+      maxAge: 60 * 60 * 24 * 7,
       sameSite: 'strict',
-      maxAge: 60 * 60 * 24 * 7, // 7 days
     });
 
-    return NextResponse.json({
-      success: true,
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-      },
-    });
+    return response;
+
   } catch (error) {
     console.error('Signup error:', error);
     return NextResponse.json(
-      { success: false, message: 'An error occurred during signup' },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }

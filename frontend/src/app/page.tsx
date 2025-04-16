@@ -4,6 +4,9 @@ import React, { useState, useEffect } from 'react';
 import SearchBar from '@/components/SearchBar';
 import SearchResults from '@/components/SearchResults';
 import { CompanySearchResult } from '@/app/api/search/route';
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { useRouter } from 'next/navigation';
 
 export default function Home() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -14,6 +17,7 @@ export default function Home() {
   const [recentlyViewed, setRecentlyViewed] = useState<CompanySearchResult[]>([]);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [bookmarkedCompanies, setBookmarkedCompanies] = useState<CompanySearchResult[]>([]);
+  const router = useRouter();
 
   // Check if user is logged in
   useEffect(() => {
@@ -132,217 +136,64 @@ export default function Home() {
     }
   };
 
+  const handleRequestCompany = () => {
+    if (!isLoggedIn) {
+      router.push('/login?redirect=/request');
+    } else {
+      router.push('/request');
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-neutral-900 text-white">
-      <header className="bg-neutral-900 border-b border-neutral-800">
-        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <a href="/" className="text-2xl font-bold text-neon-green">
-            HowDoTheyMakeMoney.com
-          </a>
-          <div className="flex items-center gap-4">
-            {isLoggedIn ? (
-              <>
-                <a href="/bookmarks" className="text-gray-300 hover:text-white">
-                  Bookmarks
-                </a>
-                <div className="relative group">
-                  <button className="text-gray-300 hover:text-white">
-                    Account
-                  </button>
-                  <div className="absolute right-0 mt-2 w-48 bg-neutral-800 rounded-md shadow-lg py-1 z-10 hidden group-hover:block">
-                    <a href="/profile" className="block px-4 py-2 text-sm text-gray-300 hover:bg-neutral-700">
-                      Profile
-                    </a>
-                    <a href="/bookmarks" className="block px-4 py-2 text-sm text-gray-300 hover:bg-neutral-700">
-                      Bookmarks
-                    </a>
-                    <a href="/api/auth/logout" className="block px-4 py-2 text-sm text-gray-300 hover:bg-neutral-700">
-                      Log Out
-                    </a>
-                  </div>
-                </div>
-              </>
-            ) : (
-              <>
-                <a href="/login" className="text-gray-300 hover:text-white">
-                  Log In
-                </a>
-                <a href="/signup" className="bg-neon-green text-black px-4 py-2 rounded-md hover:bg-neon-green/90">
-                  Sign Up
-                </a>
-              </>
-            )}
-          </div>
-        </div>
-      </header>
-      
-      <main className="container mx-auto px-4 py-12">
-        <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold mb-4">
-            How do companies actually make money?
-          </h1>
-          <p className="text-xl text-gray-400 mb-8 max-w-2xl mx-auto">
-            Discover the business models behind the world's most interesting companies
-          </p>
-          
-          <div className="flex justify-center">
-            <SearchBar 
-              onSearch={handleSearch}
-              placeholder="Search for a company..."
-              initialValue={searchQuery}
-            />
-          </div>
-        </div>
-        
-        {hasSearched ? (
-          <SearchResults 
-            results={searchResults}
-            isLoading={isSearching}
-          />
-        ) : (
-          <div className="space-y-12">
-            {featuredCompanies.length > 0 && (
-              <section>
-                <h2 className="text-2xl font-semibold mb-6">Featured Companies</h2>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  {featuredCompanies.map((company) => (
-                    <a 
-                      key={company.id} 
-                      href={`/company/${company.id}`}
-                      className="bg-neutral-800 rounded-lg p-6 hover:bg-neutral-700 transition-colors"
-                    >
-                      <div className="flex items-center gap-4 mb-4">
-                        {company.logo ? (
-                          <div className="w-12 h-12 rounded-md overflow-hidden bg-neutral-700 flex-shrink-0">
-                            <img 
-                              src={company.logo} 
-                              alt={`${company.name} logo`} 
-                              className="w-full h-full object-contain"
-                            />
-                          </div>
-                        ) : (
-                          <div className="w-12 h-12 rounded-md overflow-hidden bg-neutral-700 flex-shrink-0 flex items-center justify-center">
-                            <span className="text-xl font-bold text-neutral-500">
-                              {company.name.charAt(0)}
-                            </span>
-                          </div>
-                        )}
-                        <h3 className="text-lg font-medium">{company.name}</h3>
-                      </div>
-                      <p className="text-gray-400 text-sm mb-3">{company.description}</p>
-                      <div className="text-xs text-positive-green">
-                        Primary Revenue: {company.primaryRevenue}
-                      </div>
-                    </a>
-                  ))}
-                </div>
-              </section>
-            )}
+    <div className="bg-white">
+      <div className="relative isolate px-6 pt-6 lg:px-8">
+        <div className="mx-auto max-w-2xl py-16 sm:py-24 lg:py-32">
+          <div className="text-center">
+            <h1 className="text-4xl font-bold tracking-tight text-gray-900 sm:text-6xl">
+              Understand how companies make money
+            </h1>
+            <p className="mt-6 text-lg leading-8 text-gray-600">
+              Clear, digestible information about revenue breakdowns and business models of the world's most interesting companies.
+            </p>
             
-            {isLoggedIn && bookmarkedCompanies.length > 0 && (
-              <section>
-                <h2 className="text-2xl font-semibold mb-6">Your Bookmarks</h2>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  {bookmarkedCompanies.map((company) => (
-                    <a 
-                      key={company.id} 
-                      href={`/company/${company.id}`}
-                      className="bg-neutral-800 rounded-lg p-6 hover:bg-neutral-700 transition-colors"
-                    >
-                      <div className="flex items-center gap-4 mb-4">
-                        {company.logo ? (
-                          <div className="w-12 h-12 rounded-md overflow-hidden bg-neutral-700 flex-shrink-0">
-                            <img 
-                              src={company.logo} 
-                              alt={`${company.name} logo`} 
-                              className="w-full h-full object-contain"
-                            />
-                          </div>
-                        ) : (
-                          <div className="w-12 h-12 rounded-md overflow-hidden bg-neutral-700 flex-shrink-0 flex items-center justify-center">
-                            <span className="text-xl font-bold text-neutral-500">
-                              {company.name.charAt(0)}
-                            </span>
-                          </div>
-                        )}
-                        <h3 className="text-lg font-medium">{company.name}</h3>
-                      </div>
-                      <p className="text-gray-400 text-sm mb-3">{company.description}</p>
-                      <div className="text-xs text-positive-green">
-                        Primary Revenue: {company.primaryRevenue}
-                      </div>
-                    </a>
-                  ))}
-                </div>
-              </section>
-            )}
-            
-            {recentlyViewed.length > 0 && (
-              <section>
-                <h2 className="text-2xl font-semibold mb-6">Recently Viewed</h2>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  {recentlyViewed.map((company) => (
-                    <a 
-                      key={company.id} 
-                      href={`/company/${company.id}`}
-                      className="bg-neutral-800 rounded-lg p-6 hover:bg-neutral-700 transition-colors"
-                    >
-                      <div className="flex items-center gap-4 mb-4">
-                        {company.logo ? (
-                          <div className="w-12 h-12 rounded-md overflow-hidden bg-neutral-700 flex-shrink-0">
-                            <img 
-                              src={company.logo} 
-                              alt={`${company.name} logo`} 
-                              className="w-full h-full object-contain"
-                            />
-                          </div>
-                        ) : (
-                          <div className="w-12 h-12 rounded-md overflow-hidden bg-neutral-700 flex-shrink-0 flex items-center justify-center">
-                            <span className="text-xl font-bold text-neutral-500">
-                              {company.name.charAt(0)}
-                            </span>
-                          </div>
-                        )}
-                        <h3 className="text-lg font-medium">{company.name}</h3>
-                      </div>
-                      <p className="text-gray-400 text-sm mb-3">{company.description}</p>
-                      <div className="text-xs text-positive-green">
-                        Primary Revenue: {company.primaryRevenue}
-                      </div>
-                    </a>
-                  ))}
-                </div>
-              </section>
-            )}
-          </div>
-        )}
-      </main>
-      
-      <footer className="bg-neutral-900 border-t border-neutral-800 py-8 mt-12">
-        <div className="container mx-auto px-4">
-          <div className="flex flex-col md:flex-row justify-between items-center">
-            <div className="mb-4 md:mb-0">
-              <p className="text-gray-400">
-                © {new Date().getFullYear()} HowDoTheyMakeMoney.com
-              </p>
+            {/* Search Bar */}
+            <div className="mt-10 flex justify-center">
+              <div className="w-full max-w-lg">
+                <SearchBar 
+                  onSearch={handleSearch}
+                  placeholder="Search for a company..."
+                  initialValue={searchQuery}
+                />
+              </div>
             </div>
-            <div className="flex gap-6">
-              <a href="/about" className="text-gray-400 hover:text-white">
-                About
-              </a>
-              <a href="/request" className="text-gray-400 hover:text-white">
+
+            {/* Search Results */}
+            {hasSearched && (
+              <div className="mt-8">
+                <SearchResults 
+                  results={searchResults}
+                  isLoading={isSearching}
+                />
+              </div>
+            )}
+
+            {/* Action Buttons */}
+            <div className="mt-10 flex items-center justify-center gap-x-6">
+              <Button asChild>
+                <Link href="/companies">
+                  Browse All Companies
+                </Link>
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={handleRequestCompany}
+              >
                 Request a Company
-              </a>
-              <a href="/privacy" className="text-gray-400 hover:text-white">
-                Privacy
-              </a>
-              <a href="/terms" className="text-gray-400 hover:text-white">
-                Terms
-              </a>
+              </Button>
             </div>
           </div>
         </div>
-      </footer>
+      </div>
     </div>
   );
 }

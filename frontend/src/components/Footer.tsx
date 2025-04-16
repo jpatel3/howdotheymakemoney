@@ -2,38 +2,22 @@ import Link from 'next/link'
 
 export function Footer() {
   return (
-    <footer className="w-full border-t bg-background">
-      <div className="container flex flex-col items-center justify-between gap-4 py-10 md:h-24 md:flex-row md:py-0">
-        <div className="flex flex-col items-center gap-4 px-8 md:flex-row md:gap-2 md:px-0">
-          <p className="text-center text-sm leading-loose text-muted-foreground md:text-left">
-            Built by{' '}
-            <a
-              href="https://twitter.com/shadcn"
-              target="_blank"
-              rel="noreferrer"
-              className="font-medium underline underline-offset-4"
-            >
-              shadcn
-            </a>
-            . Hosted on{' '}
-            <a
-              href="https://vercel.com"
-              target="_blank"
-              rel="noreferrer"
-              className="font-medium underline underline-offset-4"
-            >
-              Vercel
-            </a>
-            . Illustrations by{' '}
-            <a
-              href="https://popsy.co"
-              target="_blank"
-              rel="noreferrer"
-              className="font-medium underline underline-offset-4"
-            >
-              Popsy
-            </a>
-            .
+    <footer className="bg-white border-t">
+      <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 md:flex md:items-center md:justify-between lg:px-8">
+        <div className="flex justify-center space-x-6 md:order-2">
+          <Link href="/about" className="text-gray-500 hover:text-gray-600">
+            About
+          </Link>
+          <Link href="/privacy" className="text-gray-500 hover:text-gray-600">
+            Privacy
+          </Link>
+          <Link href="/terms" className="text-gray-500 hover:text-gray-600">
+            Terms
+          </Link>
+        </div>
+        <div className="mt-4 md:order-1 md:mt-0">
+          <p className="text-center text-sm text-gray-500">
+            &copy; {new Date().getFullYear()} How Do They Make Money. All rights reserved.
           </p>
         </div>
       </div>

@@ -6,6 +6,7 @@ export const users = sqliteTable('users', {
   name: text('name').notNull(),
   email: text('email').notNull().unique(),
   password: text('password').notNull(),
+  isAdmin: integer('is_admin', { mode: 'boolean' }).notNull().default(false),
   createdAt: integer('created_at', { mode: 'timestamp' })
     .notNull()
     .default(sql`CURRENT_TIMESTAMP`),
@@ -14,11 +15,15 @@ export const users = sqliteTable('users', {
 export const companies = sqliteTable('companies', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   name: text('name').notNull(),
+  slug: text('slug').notNull().unique(),
   description: text('description'),
   logo: text('logo'),
+  website: text('website'),
+  headquarters: text('headquarters'),
   primaryRevenue: text('primary_revenue').notNull(),
   revenueBreakdown: text('revenue_breakdown').notNull(),
   businessModel: text('business_model').notNull(),
+  requestedByUserId: integer('requested_by_user_id').references(() => users.id),
   createdAt: integer('created_at', { mode: 'timestamp' })
     .notNull()
     .default(sql`CURRENT_TIMESTAMP`),

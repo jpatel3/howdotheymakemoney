@@ -1,104 +1,68 @@
 import bcrypt from 'bcryptjs';
 import { cookies } from 'next/headers';
-import { SignJWT, jwtVerify } from 'jose';
-import { getDB, users, userProfiles } from './db/schema';
+import { SignJWT, jwtVerify, type JWTPayload } from 'jose';
+import { getDB } from '@/lib/db';
+import { users } from './schema';
+import { eq } from 'drizzle-orm';
+import { D1Database } from '@cloudflare/workers-types';
 
 // Secret key for JWT signing
 const JWT_SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || 'howdotheymakemoney-default-secret-key'
+  process.env.JWT_SECRET || 'your-secret-key'
 );
 
-// User session type
-export interface UserSession {
+// Define the structure of our user session data within the JWT
+// Include all necessary fields for frontend/middleware checks
+export interface UserSession extends JWTPayload {
   id: number;
   email: string;
-  displayName?: string;
+  name: string;
+  isAdmin: boolean;
 }
 
-// Register a new user
-export async function registerUser(
-  db: D1Database,
-  email: string,
-  password: string,
-  displayName?: string
-) {
-  const dbClient = getDB(db);
-  
-  // Check if user already exists
-  const existingUser = await dbClient.select().from(users).where(users.email, '=', email).get();
-  if (existingUser) {
-    throw new Error('User already exists');
-  }
-  
-  // Hash password
-  const salt = await bcrypt.genSalt(10);
-  const passwordHash = await bcrypt.hash(password, salt);
-  
-  // Create user in transaction
-  return await dbClient.transaction(async (tx) => {
-    // Insert user
-    const result = await tx.insert(users).values({
-      email,
-      passwordHash,
-    }).returning({ id: users.id });
-    
-    const userId = result[0].id;
-    
-    // Create user profile
-    await tx.insert(userProfiles).values({
-      userId,
-      displayName: displayName || email.split('@')[0],
-    });
-    
-    // Increment registered users counter
-    await tx.execute(
-      `UPDATE counters SET value = value + 1 WHERE name = 'registered_users'`
-    );
-    
-    return userId;
-  });
-}
-
-// Login user
+// Login user function
 export async function loginUser(
-  db: D1Database,
   email: string,
   password: string
-) {
-  const dbClient = getDB(db);
+): Promise<{ token: string; user: UserSession }> {
+  // Explicitly handle DB binding check here to satisfy linter
+  let dbBinding: D1Database | undefined = undefined; 
+  // How to get the actual binding here depends on the execution context 
+  // (e.g., from request object in Cloudflare Workers). 
+  // For local dev, we will pass undefined to getDB.
+  const db = await getDB(dbBinding); 
+
+  if (!db) throw new Error('Database connection error during login');
   
-  // Find user
-  const user = await dbClient.select().from(users).where(users.email, '=', email).get();
+  // Find user by email, select correct password field
+  const user = await db.select({
+      id: users.id,
+      email: users.email,
+      password: users.password, // Use the actual password field name from schema
+      name: users.name,
+      isAdmin: users.isAdmin
+  }).from(users).where(eq(users.email, email.toLowerCase())).limit(1).get();
+  
   if (!user) {
     throw new Error('Invalid credentials');
   }
   
-  // Verify password
-  const isMatch = await bcrypt.compare(password, user.passwordHash);
+  // Compare with the fetched password field
+  const isMatch = await bcrypt.compare(password, user.password); 
   if (!isMatch) {
     throw new Error('Invalid credentials');
   }
-  
-  // Update last login
-  await dbClient.update(users)
-    .set({ lastLogin: new Date().toISOString() })
-    .where(users.id, '=', user.id);
-  
-  // Get user profile
-  const profile = await dbClient.select()
-    .from(userProfiles)
-    .where(userProfiles.userId, '=', user.id)
-    .get();
-  
-  // Create session
+
+  // Construct the session payload
   const session: UserSession = {
     id: user.id,
     email: user.email,
-    displayName: profile?.displayName
+    name: user.name, 
+    isAdmin: user.isAdmin,
   };
   
   // Create and sign JWT
-  const token = await new SignJWT(session)
+  const token = await new SignJWT({ ...session })
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
     .setExpirationTime('7d')
@@ -107,11 +71,9 @@ export async function loginUser(
   return { token, user: session };
 }
 
-// Set session cookie
+// Set session cookie (using 'token' name)
 export function setSessionCookie(token: string) {
-  cookies().set({
-    name: 'auth-token',
-    value: token,
+  cookies().set('token', token, {
     httpOnly: true,
     path: '/',
     secure: process.env.NODE_ENV === 'production',
@@ -120,42 +82,46 @@ export function setSessionCookie(token: string) {
   });
 }
 
-// Clear session cookie
+// Clear session cookie (using 'token' name)
 export function clearSessionCookie() {
-  cookies().set({
-    name: 'auth-token',
-    value: '',
-    httpOnly: true,
-    path: '/',
-    secure: process.env.NODE_ENV === 'production',
-    maxAge: 0,
-    sameSite: 'strict',
+  cookies().set('token', '', { 
+      httpOnly: true, path: '/', 
+      secure: process.env.NODE_ENV === 'production', 
+      maxAge: 0, sameSite: 'strict' 
   });
 }
 
-// Get current user session
+// Get current user session (validates and returns UserSession)
 export async function getCurrentUser(): Promise<UserSession | null> {
-  const token = cookies().get('auth-token')?.value;
-  
-  if (!token) {
-    return null;
-  }
+  const token = cookies().get('token')?.value;
+  if (!token) return null;
   
   try {
-    const verified = await jwtVerify(token, JWT_SECRET);
-    return verified.payload as UserSession;
+    const { payload } = await jwtVerify(token, JWT_SECRET);
+    // Basic validation of expected fields
+    if (
+        typeof payload.id !== 'number' || 
+        typeof payload.email !== 'string' || 
+        typeof payload.name !== 'string' ||
+        typeof payload.isAdmin !== 'boolean'
+    ) {
+      console.error('Invalid JWT payload structure in getCurrentUser:', payload);
+      return null;
+    }
+    return payload as UserSession;
   } catch (error) {
+    // Log specific JWT errors like expiration, signature mismatch etc.
+    console.warn(`JWT verification failed in getCurrentUser: ${error instanceof Error ? error.message : error}`);
     return null;
   }
 }
 
-// Middleware to require authentication
-export async function requireAuth() {
+// Helper to require authentication (returns UserSession or throws)
+export async function requireAuth(): Promise<UserSession> {
   const user = await getCurrentUser();
-  
   if (!user) {
-    throw new Error('Authentication required');
+    // In API routes, throwing might be okay, in pages consider redirect
+    throw new Error('Authentication required'); 
   }
-  
   return user;
 }

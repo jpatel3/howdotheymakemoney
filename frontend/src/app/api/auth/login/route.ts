@@ -1,64 +1,66 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { loginUser, setSessionCookie } from '@/lib/auth';
-import { db } from '@/lib/db';
-import { users } from '@/lib/schema';
-import { eq } from 'drizzle-orm';
-import { sign } from 'jsonwebtoken';
-import { cookies } from 'next/headers';
 
-export async function POST(request: NextRequest) {
+export async function POST(request: Request) {
   try {
-    const { email, password } = await request.json();
+    const body = await request.json();
+    const { email, password } = body;
+
+    if (!email || !password) {
+      return NextResponse.json(
+        { success: false, error: 'Email and password are required' },
+        { status: 400 }
+      );
+    }
+
+    // Attempt to log in the user using the function from lib/auth
+    const { token, user } = await loginUser(email, password);
+
+    // If loginUser didn't throw an error, login was successful
+    const response = NextResponse.json(
+        { success: true, user: user }, // Return user info on success
+        { status: 200 }
+    );
+
+    // Set the session cookie using the function from lib/auth
+    // Note: setSessionCookie uses cookies() from next/headers, which only works
+    // in Server Components or Route Handlers that read cookies first.
+    // We might need to set the cookie directly on the response object here.
     
-    // Find user by email
-    const user = await db.query.users.findFirst({
-      where: eq(users.email, email),
+    // Direct cookie setting on NextResponse
+    response.cookies.set('token', token, {
+        httpOnly: true,
+        path: '/',
+        secure: process.env.NODE_ENV === 'production',
+        maxAge: 60 * 60 * 24 * 7, // 7 days
+        sameSite: 'strict',
     });
 
-    if (!user) {
-      return NextResponse.json(
-        { success: false, message: 'Invalid email or password' },
-        { status: 401 }
-      );
-    }
+    return response;
 
-    // In a real application, you would hash the password and compare hashes
-    // For this example, we'll just compare the plain text passwords
-    if (user.password !== password) {
-      return NextResponse.json(
-        { success: false, message: 'Invalid email or password' },
-        { status: 401 }
-      );
-    }
-
-    // Create JWT token
-    const token = sign(
-      { userId: user.id, email: user.email },
-      process.env.JWT_SECRET || 'your-secret-key',
-      { expiresIn: '7d' }
-    );
-
-    // Set cookie
-    cookies().set('token', token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 60 * 60 * 24 * 7, // 7 days
-    });
-
-    return NextResponse.json({
-      success: true,
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-      },
-    });
   } catch (error) {
-    console.error('Login error:', error);
-    return NextResponse.json(
-      { success: false, message: 'An error occurred during login' },
-      { status: 500 }
-    );
+    // Handle errors thrown by loginUser (e.g., invalid credentials)
+    if (error instanceof Error && error.message === 'Invalid credentials') {
+      return NextResponse.json(
+        { success: false, error: 'Invalid email or password' },
+        { status: 401 } // Unauthorized
+      );
+    } 
+    // Handle potential database connection errors from loginUser
+    else if (error instanceof Error && error.message.includes('Database connection error')) {
+        console.error('Login API DB error:', error);
+        return NextResponse.json(
+            { success: false, error: 'Server error during login' }, 
+            { status: 500 }
+        );
+    }
+    // Handle other unexpected errors
+    else {
+        console.error('Login API general error:', error);
+        return NextResponse.json(
+            { success: false, error: 'An unexpected error occurred' }, 
+            { status: 500 }
+        );
+    }
   }
-}
+} 

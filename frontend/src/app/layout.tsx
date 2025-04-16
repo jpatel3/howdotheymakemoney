@@ -1,13 +1,14 @@
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
+import Header from '@/components/Header'
 import { Footer } from '@/components/Footer'
 
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
   title: 'How Do They Make Money',
-  description: 'Clear, digestible information about how companies make money',
+  description: 'Understand how companies make money with clear, digestible information about their revenue breakdowns and business models.',
 }
 
 export default function RootLayout({
@@ -16,9 +17,12 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" className="h-full">
-      <body className={`${inter.className} flex min-h-full flex-col`}>
-        <div className="flex-1">{children}</div>
+    <html lang="en" className="h-full bg-white">
+      <body className={`${inter.className} min-h-full flex flex-col`}>
+        <Header />
+        <main className="flex-grow">
+          {children}
+        </main>
         <Footer />
       </body>
     </html>
