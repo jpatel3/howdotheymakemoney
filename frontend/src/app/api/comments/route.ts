@@ -1,7 +1,8 @@
+import { requireAuth } from '@/lib/server/auth';
+import { getDB } from '@/lib/server/db';
+import { comments, userProfiles } from '@/lib/server/schema';
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth } from '@/lib/auth';
-import { getDB, comments, userProfiles } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { eq, desc } from 'drizzle-orm';
 
 export async function POST(request: NextRequest) {
   try {

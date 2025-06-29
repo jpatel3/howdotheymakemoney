@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth } from '@/lib/auth';
-import { getDB, companyRequests } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { requireAuth } from '@/lib/server/auth';
+import { getDB } from '@/lib/server/db';
+import { companyRequests } from '@/lib/server/schema';
+import { eq, desc, and } from 'drizzle-orm';
 import { cookies } from 'next/headers';
 import { jwtVerify } from 'jose';
 
@@ -17,6 +18,67 @@ interface UserJWTPayload {
   name?: string;
   role?: string;
   // Add other fields if they exist in your JWT payload
+}
+
+// --- GET Handler to fetch requests --- 
+export async function GET(request: NextRequest) {
+  // 1. Verify User Authentication & Get User ID
+  const token = cookies().get('token')?.value;
+  if (!token) {
+    return NextResponse.json({ error: 'Unauthorized: No token provided' }, { status: 401 });
+  }
+
+  let userId: number;
+  try {
+    const { payload } = await jwtVerify(token, JWT_SECRET);
+    if (typeof payload.id !== 'number') { 
+        console.error('Invalid token payload in GET /company-requests: Missing or invalid user ID', payload);
+        throw new Error('Invalid token payload');
+    }
+    userId = payload.id;
+  } catch (error) {
+    console.error('Auth error during GET /company-requests:', error);
+    return NextResponse.json({ error: 'Unauthorized: Invalid or expired token' }, { status: 401 });
+  }
+
+  // 2. Get Query Params
+  const { searchParams } = new URL(request.url);
+  const status = searchParams.get('status'); // e.g., 'pending'
+
+  // 3. Fetch Requests from DB
+  try {
+    const db = await getDB();
+    if (!db) {
+      console.error('Company Request API (GET) error: Failed to get DB instance');
+      return NextResponse.json({ error: 'Database connection error' }, { status: 500 });
+    }
+    
+    // Build conditions array
+    const conditions = [
+        eq(companyRequests.userId, userId) // Always filter by user
+    ];
+
+    // Add status condition if provided
+    if (status) {
+        conditions.push(eq(companyRequests.status, status));
+    }
+
+    // Build and execute the query with combined conditions
+    const query = db
+        .select()
+        .from(companyRequests)
+        .where(and(...conditions)) // Use and() operator
+        .orderBy(desc(companyRequests.createdAt));
+
+    const requests = await query;
+    
+    // 4. Return Success Response
+    return NextResponse.json({ success: true, requests });
+
+  } catch (error) {
+    console.error('Error fetching company requests:', error);
+    return NextResponse.json({ error: 'Internal Server Error: Could not fetch requests' }, { status: 500 });
+  }
 }
 
 export async function POST(request: Request) {

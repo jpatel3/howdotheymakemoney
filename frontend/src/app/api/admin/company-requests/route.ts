@@ -1,10 +1,10 @@
-import { NextResponse } from 'next/server';
-import { getDB } from '@/lib/db';
-import { companyRequests, users } from '@/lib/schema';
-import { eq } from 'drizzle-orm';
+import { NextRequest, NextResponse } from 'next/server';
+import { getDB } from '@/lib/server/db';
+import { companyRequests, users } from '@/lib/server/schema';
+import { eq, desc } from 'drizzle-orm';
 import { cookies } from 'next/headers';
 import { jwtVerify } from 'jose';
-import { UserSession } from '@/lib/auth';
+import { UserSession, getCurrentUser } from '@/lib/server/auth';
 
 // Secret key
 const JWT_SECRET = new TextEncoder().encode(

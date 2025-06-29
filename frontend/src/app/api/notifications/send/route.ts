@@ -1,7 +1,8 @@
+import { requireAuth } from '@/lib/server/auth';
+import { getDB } from '@/lib/server/db';
+import { users, userProfiles } from '@/lib/server/schema';
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth } from '@/lib/auth';
-import { getDB, users, userProfiles } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { eq, inArray, sql } from 'drizzle-orm';
 
 // Email notification types
 export type NotificationType = 'new_company' | 'comment_reply' | 'company_request_approved';

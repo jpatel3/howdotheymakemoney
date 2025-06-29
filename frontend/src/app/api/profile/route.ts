@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth } from '@/lib/auth';
-import { getDB, userProfiles } from '@/lib/db/schema';
+import { requireAuth } from '@/lib/server/auth';
+import { userProfiles } from '@/lib/server/schema';
+import { getDB } from '@/lib/server/db';
 import { eq } from 'drizzle-orm';
 
 export async function GET(request: NextRequest) {

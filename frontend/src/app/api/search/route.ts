@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { companies } from '@/lib/schema';
-import { getDB } from '@/lib/db';
-import { sql, like } from 'drizzle-orm';
+import { companies } from '@/lib/server/schema';
+import { getDB } from '@/lib/server/db';
+import { sql, or, like } from 'drizzle-orm';
 
 // Define search result type
 export interface CompanySearchResult {

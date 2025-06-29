@@ -1,118 +1,109 @@
-# How Do They Make Money
+# How Do They Make Money?
 
-A modern web application that helps users understand how companies generate revenue and their business models.
+A modern web application that helps users understand how companies generate revenue and their business models, inspired by platforms like Product Hunt but focused solely on company financials and strategies.
 
 ## Features
 
-- 🔍 Company Search and Discovery
-- 📊 Detailed Revenue Breakdowns
-- 💬 Interactive Comment System
-- 📱 Modern, Responsive UI
-- 🔐 Secure Authentication
-- 📈 Trending Companies
-- 📌 Bookmarking System
-- 🔄 Real-time Updates
+- **User Management:** Signup, Login (Email/Password), Admin Roles
+- **Company Browsing:** Public list (`/companies`), search/filter
+- **Company Details:** Dynamic pages (`/company/[slug]`) showing:
+    - Description, Logo, Website, Headquarters
+    - Business Model Summary
+    - Revenue Breakdown (Chart & List)
+    - *Placeholder for Comments, Bookmarks, Sharing*
+- **Company Requests:** Users can request new companies; Admins can view/approve/reject requests.
+- **Admin Access:** Dedicated section for Admins (link in header) to manage requests.
+- **Secure:** Uses JWT cookies (httpOnly) for session management, middleware protection.
+
+*See `REQUIREMENTS.md` for a detailed feature checklist and TODOs.*
 
 ## Tech Stack
 
-- **Frontend**: Next.js 14, TypeScript, Tailwind CSS
-- **Database**: PostgreSQL (Cloudflare D1)
-- **Authentication**: NextAuth.js
-- **Styling**: Tailwind CSS, shadcn/ui components
-- **Deployment**: Cloudflare Pages
-- **Storage**: Cloudflare R2 (for static assets)
-- **Edge Functions**: Cloudflare Workers
+- **Framework:** Next.js 14 (App Router)
+- **Language:** TypeScript
+- **Database:** SQLite (via `better-sqlite3`)
+- **ORM:** Drizzle ORM
+- **Authentication:** Custom JWT (using `jose` library)
+- **Styling:** Tailwind CSS
+- **UI Components:** shadcn/ui
+- **Charting:** Chart.js / react-chartjs-2
 
 ## Getting Started
 
 ### Prerequisites
 
-- Node.js 18+ 
-- pnpm
-- Cloudflare account
-- Domain name (optional)
+- Node.js (v18 or later recommended)
+- npm (comes with Node.js)
 
 ### Local Development
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/jpatel3/howdotheymakemoney.git
-   cd howdotheymakemoney
-   ```
+1.  **Clone the repository:**
+    ```bash
+    git clone https://github.com/jpatel3/howdotheymakemoney.git
+    cd howdotheymakemoney
+    ```
 
-2. Install dependencies:
-   ```bash
-   pnpm install
-   ```
+2.  **Navigate to Frontend:**
+    ```bash
+    cd frontend
+    ```
 
-3. Set up environment variables:
-   Create a `.env` file in the root directory with the following variables:
-   ```
-   DATABASE_URL=your_database_url
-   NEXTAUTH_SECRET=your_secret
-   NEXTAUTH_URL=http://localhost:3000
-   ```
+3.  **Install dependencies:**
+    ```bash
+    npm install
+    ```
 
-4. Start the development server:
-   ```bash
-   pnpm dev
-   ```
+4.  **Set up environment variables (Optional but Recommended):**
+    Create a `.env.local` file in the `frontend` directory. You can set a custom JWT secret:
+    ```
+    JWT_SECRET=your-strong-secret-key-here
+    ```
+    If omitted, a default key will be used (less secure).
 
-### Cloudflare Deployment
+5.  **Run the development server:**
+    ```bash
+    npm run dev
+    ```
+    The application will start, typically on `http://localhost:3000`.
 
-1. Install Wrangler CLI:
-   ```bash
-   pnpm add -g wrangler
-   ```
+6.  **Database Initialization:**
+    The first time you run `npm run dev`, the SQLite database (`local.db`) will be automatically created in the `frontend` directory. It will also be seeded with sample companies (Tesla, Google, etc.) and a default **admin user**.
 
-2. Login to Cloudflare:
-   ```bash
-   wrangler login
-   ```
+    *   **Admin Email:** `admin@app.com`
+    *   **Admin Password:** `password`
 
-3. Create a new D1 database:
-   ```bash
-   wrangler d1 create howdotheymakemoney-db
-   ```
+### Resetting the Database
 
-4. Deploy to Cloudflare Pages:
-   ```bash
-   wrangler pages deploy frontend
-   ```
+If you need to reset the database to its initial seeded state:
+1.  Stop the development server.
+2.  Delete the `local.db` file in the `frontend` directory.
+3.  Restart the development server (`npm run dev`).
 
-5. Set up environment variables in Cloudflare Dashboard:
-   - Go to your project settings
-   - Add the following environment variables:
-     - `DATABASE_URL`
-     - `NEXTAUTH_SECRET`
-     - `NEXTAUTH_URL` (your production URL)
-
-6. Configure custom domain (optional):
-   - In Cloudflare Pages dashboard
-   - Go to your project settings
-   - Under "Custom domains", add your domain
-   - Follow the DNS configuration instructions
-
-## Project Structure
+## Project Structure (Simplified)
 
 ```
 howdotheymakemoney/
-├── frontend/              # Next.js frontend application
+├── frontend/
+│   ├── public/            # Static assets
 │   ├── src/
-│   │   ├── app/          # Next.js app router pages
-│   │   ├── components/   # React components
-│   │   └── lib/          # Utility functions and configurations
-├── docs/                  # Project documentation
-└── migrations/            # Database migrations
+│   │   ├── app/           # Next.js App Router (Pages & API Routes)
+│   │   ├── components/    # Reusable React components (UI & domain)
+│   │   ├── lib/           # Core logic (DB, Auth, Schema)
+│   │   └── styles/        # (If any global styles beyond globals.css)
+│   ├── drizzle/           # Drizzle ORM migrations/config (if used)
+│   ├── local.db           # Local SQLite database file (created on run)
+│   ├── next.config.mjs    # Next.js configuration
+│   ├── package.json       # Project dependencies & scripts
+│   ├── tailwind.config.ts # Tailwind configuration
+│   └── tsconfig.json      # TypeScript configuration
+├── .gitignore
+├── README.md
+└── REQUIREMENTS.md
 ```
 
 ## Contributing
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+Contributions are welcome! Please follow standard fork/branch/PR workflow.
 
 ## License
 

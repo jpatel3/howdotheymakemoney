@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { jwtVerify } from 'jose';
-import { UserSession } from '@/lib/auth'; // Import the session type
+import { getCurrentUser } from '@/lib/server/auth'; // Updated path
+import { UserSession } from '@/lib/server/auth'; // Updated path
 
 // Secret key (should match middleware/auth.ts/signup)
 const JWT_SECRET = new TextEncoder().encode(

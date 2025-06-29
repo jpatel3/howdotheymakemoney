@@ -102,6 +102,9 @@ export default function Header() {
                   <DropdownMenuLabel>Admin Actions</DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
+                    <Link href="/admin">Admin Dashboard</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
                     <Link href="/admin/requests">Review Requests</Link>
                   </DropdownMenuItem>
                   {/* Add other admin links here if needed */}

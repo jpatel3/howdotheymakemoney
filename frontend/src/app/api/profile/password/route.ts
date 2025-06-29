@@ -1,6 +1,7 @@
+import { requireAuth } from '@/lib/server/auth';
+import { getDB } from '@/lib/server/db';
+import { users } from '@/lib/server/schema';
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth } from '@/lib/auth';
-import { getDB, users } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
 

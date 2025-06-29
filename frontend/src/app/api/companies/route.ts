@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { getDB } from '@/lib/db';
-import { companies } from '@/lib/schema';
+import { getDB } from '@/lib/server/db';
+import { companies } from '@/lib/server/schema';
 
 // Remove edge runtime since we're using SQLite locally
 // export const runtime = 'edge';

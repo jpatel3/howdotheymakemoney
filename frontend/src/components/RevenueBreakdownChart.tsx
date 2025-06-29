@@ -1,10 +1,17 @@
 import React from 'react';
 import { Doughnut } from 'react-chartjs-2';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
-import { RevenueSegment } from '@/app/api/company/route';
 
 // Register Chart.js components
 ChartJS.register(ArcElement, Tooltip, Legend);
+
+// Define the interface locally
+interface RevenueSegment {
+  name: string;
+  percentage: number;
+  description?: string; // Optional based on usage in tooltip
+  amount?: number;      // Optional based on usage in tooltip
+}
 
 interface RevenueBreakdownChartProps {
   segments: RevenueSegment[];
@@ -62,7 +69,7 @@ export default function RevenueBreakdownChart({ segments }: RevenueBreakdownChar
       legend: {
         position: 'right' as const,
         labels: {
-          color: '#F8F9FA',
+          color: '#333333', // Dark Gray
           font: {
             size: 12,
           },
@@ -73,11 +80,13 @@ export default function RevenueBreakdownChart({ segments }: RevenueBreakdownChar
         callbacks: {
           label: function(context: any) {
             const segment = segments[context.dataIndex];
-            return [
+            const lines = [
               `${segment.name}: ${segment.percentage}%`,
               segment.description,
-              segment.amount ? `$${(segment.amount / 1000000000).toFixed(1)}B` : '',
-            ].filter(Boolean);
+              segment.amount ? `$${(segment.amount / 1000000000).toFixed(1)}B` : undefined, // Use undefined for clarity
+            ];
+            // Filter out undefined/empty values and ensure result is string[]
+            return lines.filter((line): line is string => !!line);
           }
         }
       }

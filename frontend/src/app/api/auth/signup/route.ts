@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
-import { users } from '@/lib/schema';
+import { users } from '@/lib/server/schema';
 import { eq } from 'drizzle-orm';
 import { hash } from 'bcryptjs';
-import { getDB } from '@/lib/db';
+import { getDB } from '@/lib/server/db';
 import { SignJWT } from 'jose';
 import { cookies } from 'next/headers';
 

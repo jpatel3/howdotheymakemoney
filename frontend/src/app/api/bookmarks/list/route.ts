@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth } from '@/lib/auth';
-import { getDB, bookmarks } from '@/lib/db/schema';
+import { requireAuth } from '@/lib/server/auth';
+import { getDB } from '@/lib/server/db';
+import { bookmarks } from '@/lib/server/schema';
 import { eq } from 'drizzle-orm';
 
 export async function GET(request: NextRequest) {
@@ -8,17 +9,17 @@ export async function GET(request: NextRequest) {
     // Require authentication
     const user = await requireAuth();
     
-    // Get D1 database binding
-    const db = request.env.DB;
-    const dbClient = getDB(db);
+    // Get database client (getDB handles local vs. D1)
+    // const dbBinding = request.env.DB; // Remove Cloudflare specific binding access
+    const dbClient = await getDB(undefined); // Pass undefined explicitly
     
     // Get user's bookmarks
     const userBookmarks = await dbClient
       .select()
       .from(bookmarks)
       .where(eq(bookmarks.userId, user.id))
-      .all();
-    
+      // .all(); // Drizzle with better-sqlite3 usually uses .get() or awaits the query directly
+
     return NextResponse.json({
       success: true,
       bookmarks: userBookmarks

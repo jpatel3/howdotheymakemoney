@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { CompanyData } from '../company/route';
-import { getDB, reports } from '@/lib/db/schema';
+import { reports } from '@/lib/server/schema';
+import { getDB } from '@/lib/server/db';
 import { eq } from 'drizzle-orm';
+import NodeCache from 'node-cache';
 
 export async function GET(request: NextRequest) {
   try {

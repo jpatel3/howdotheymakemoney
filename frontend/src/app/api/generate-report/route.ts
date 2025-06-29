@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { CompanyData } from '../company/route';
-import OpenAI from 'openai';
-import { getDB, counters } from '@/lib/db/schema';
+import { OpenAI } from 'openai';
+import { counters } from '@/lib/server/schema';
+import { getDB } from '@/lib/server/db';
 import { eq } from 'drizzle-orm';
 import { sql } from 'drizzle-orm';
 

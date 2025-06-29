@@ -1,8 +1,8 @@
 import bcrypt from 'bcryptjs';
 import { cookies } from 'next/headers';
 import { SignJWT, jwtVerify, type JWTPayload } from 'jose';
-import { getDB } from '@/lib/db';
-import { users } from './schema';
+import { getDB } from './db'; // Correct path
+import { users } from './schema'; // Correct path
 import { eq } from 'drizzle-orm';
 import { D1Database } from '@cloudflare/workers-types';
 
@@ -124,4 +124,4 @@ export async function requireAuth(): Promise<UserSession> {
     throw new Error('Authentication required'); 
   }
   return user;
-}
+} 

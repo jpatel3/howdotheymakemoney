@@ -1,10 +1,11 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { jwtVerify } from 'jose';
-import { getDB } from '@/lib/db';
-import { companyRequests } from '@/lib/schema';
-import { eq } from 'drizzle-orm';
-import { UserSession } from '@/lib/auth'; 
+import { getDB } from '@/lib/server/db';
+import { companyRequests } from '@/lib/server/schema';
+import { eq, and } from 'drizzle-orm';
+import { UserSession, getCurrentUser } from '@/lib/server/auth';
+import { processCompanyRequestJob } from '@/lib/server/request-processor';
 
 // Secret key
 const JWT_SECRET = new TextEncoder().encode(
@@ -12,85 +13,88 @@ const JWT_SECRET = new TextEncoder().encode(
 );
 
 // Define expected statuses
-type RequestStatus = 'approved' | 'rejected';
+type RequestStatus = 'approved' | 'rejected' | 'pending' | 'processing';
 
-// PATCH handler to update request status
-export async function PATCH(request: Request, { params }: { params: { requestId: string } }) {
-  const requestId = parseInt(params.requestId, 10);
+/**
+ * PATCH /api/admin/company-requests/[requestId]
+ * Approves a company request by setting its status to 'processing' 
+ * and queueing a background job (simulated via setTimeout) to fetch company data.
+ */
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: { requestId: string } }
+) {
+  // 1. Verify Admin Authentication
+  const currentUser = await getCurrentUser();
+  if (!currentUser || currentUser.isAdmin !== true) {
+    return NextResponse.json({ error: 'Unauthorized: Admin access required' }, { status: 401 });
+  }
+  const adminUser = currentUser;
+
+  // 2. Get Request ID from URL
+  const requestIdStr = params.requestId;
+  const requestId = parseInt(requestIdStr, 10);
+
   if (isNaN(requestId)) {
-      return NextResponse.json({ error: 'Invalid request ID' }, { status: 400 });
+    return NextResponse.json({ error: 'Bad Request: Invalid request ID format' }, { status: 400 });
   }
 
-  // 1. Verify Admin Auth
-  const token = cookies().get('token')?.value;
-  if (!token) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-  try {
-    const { payload } = await jwtVerify(token, JWT_SECRET);
-    if ((payload as UserSession).isAdmin !== true) {
-        throw new Error('Forbidden');
-    }
-  } catch (error) {
-    const status = error instanceof Error && error.message === 'Forbidden' ? 403 : 401;
-    console.error('Admin request action auth error:', error);
-    return NextResponse.json({ error: status === 403 ? 'Forbidden' : 'Unauthorized' }, { status });
-  }
-
-  // 2. Parse new status from body
-  let newStatus: RequestStatus;
-  try {
-    const body = await request.json();
-    newStatus = body.status;
-    if (newStatus !== 'approved' && newStatus !== 'rejected') {
-        return NextResponse.json({ error: 'Invalid status value' }, { status: 400 });
-    }
-  } catch (error) {
-    return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
-  }
-
-  // 3. Update Database
+  // 3. Update Request Status to 'processing' and Trigger Background Job (Simulation)
   try {
     const db = await getDB();
     if (!db) {
+      console.error('Admin Request Approval API error: Failed to get DB instance');
       return NextResponse.json({ error: 'Database connection error' }, { status: 500 });
     }
 
-    // --- Get the original requester's userId BEFORE updating --- 
-    const originalRequest = await db.select({ 
-        userId: companyRequests.userId,
-        companyName: companyRequests.companyName // Fetch name for logging/potential use
-    })
-    .from(companyRequests)
-    .where(eq(companyRequests.id, requestId))
-    .limit(1)
-    .get();
+    // Find the request first to ensure it exists and is pending
+    const requestToProcess = await db
+      .select({ id: companyRequests.id, status: companyRequests.status })
+      .from(companyRequests)
+      .where(eq(companyRequests.id, requestId))
+      .limit(1)
+      .get();
 
-    if (!originalRequest) {
-        return NextResponse.json({ error: 'Request not found' }, { status: 404 });
+    if (!requestToProcess) {
+      return NextResponse.json({ error: 'Not Found: Request not found' }, { status: 404 });
     }
-    const originalRequesterId = originalRequest.userId;
-    // --- End Get userId ---
 
-    // Now update the status
-    const updateResult = await db.update(companyRequests)
-      .set({ status: newStatus })
+    if (requestToProcess.status !== 'pending') {
+      return NextResponse.json({ error: `Conflict: Request status is already ${requestToProcess.status}` }, { status: 409 });
+    }
+
+    // Update status to processing
+    const updateResult = await db
+      .update(companyRequests)
+      .set({ status: 'processing' })
       .where(eq(companyRequests.id, requestId))
       .returning({ updatedId: companyRequests.id });
       
-    // No need to check updateResult length again as we found the request above
-
-    // --- TODO: Trigger next step upon approval --- 
-    if (newStatus === 'approved') {
-        console.log(`Request ID ${requestId} for company "${originalRequest.companyName}" by user ID ${originalRequesterId} approved. Triggering process...`);
-        // Pass originalRequesterId to the next step (agent/manual creation)
+    if (updateResult.length === 0) {
+       console.error(`Failed to update request ${requestId} status to processing.`);
+       return NextResponse.json({ error: 'Internal Server Error: Failed to update request status' }, { status: 500 });
     }
-    // --- End TODO ---
 
-    return NextResponse.json({ success: true, message: `Request status updated to ${newStatus}` });
+    // --- Background Job Simulation --- 
+    console.log(`Queueing background job for request ID: ${requestId}`);
+    setTimeout(() => {
+      processCompanyRequestJob(requestId).catch((err: Error | unknown) => {
+        console.error(
+          `Background job failed for request ID ${requestId}:`, 
+          err instanceof Error ? err.message : String(err)
+        );
+      });
+    }, 0); 
+    // ----------------------------------
+    
+    // 4. Return Accepted Response
+    console.log(`Admin ${adminUser.email} initiated processing for request ${requestId}.`);
+    return NextResponse.json({ success: true, message: 'Request accepted for processing' }, { status: 202 }); 
 
   } catch (error) {
-    console.error('Error updating request status:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    console.error(`Error approving company request ${requestId}:`, error);
+    return NextResponse.json({ error: 'Internal Server Error: Could not approve request' }, { status: 500 });
   }
-} 
+}
+
+// --- Optional: Add GET/DELETE handlers if needed for this specific route --- 
